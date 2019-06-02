@@ -6,9 +6,6 @@ data("Boston")
 ?Boston # Documentazione del dataset
 str(Boston) # Elenca i nomi delle varie colonne, i tipi e degli esempi di dato
 
-n <- nrow(Boston) # n. entries dataset
-
-
 ## Estrarre elementi [riga-colonna]
 Boston # Tutto il dataset
 Boston[1,] # Mostra la prima entry (con tutte le sue colonne)
@@ -19,10 +16,10 @@ Boston[,1]
 Boston[,"crim"]
 Boston$crim
 
-select <- c("crim", "zn")  # c() compina i valori per creare un vettore
+select <- c("crim", "zn")  # c() combina i valori per creare un vettore
 Boston[,select] # ritorna un dataset con solo i valori delle due colonne selezionate
 
-
+n <- nrow(Boston) # n. entries dataset
 
 ### Plot
 summary(Boston$medv) # Riassunto della colonna data, dipende dal tipo di oggetto passatogli
