@@ -1,0 +1,153 @@
+---
+title: "Studio di un dataset"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Studio di un dataset
+
+Carichiamo ed analizziamo il dataset preso in esame:
+```{r echo=TRUE, results = FALSE}
+load("data.RData")
+summary(data)
+dim(data)
+n <- nrow(data)
+```
+
+Il dataset **Data** ci fornisce informazioni in merito a […].  
+L’obiettivo è quello di stimare un modello in modo da prevedere [...]
+
+# Analisi preliminare dei dati
+Procediamo con un’analisi esplorativa del dataset così da aiutarci a comprendere meglio la funzione che ogni variabile potrà assumere nei modelli che stimeremo.
+
+Per prima cosa controlliamo se ci sono dei dati mancanti nel dataset:
+
+```{r}
+sum(is.na(data))
+```
+in questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli:
+```{r}
+data <- na.omit(data)
+```
+
+Controlliamo la natura delle variabili qualitative f1, f2  e f3 in quanto vogliamo essere sicuri che R le riconosca effettivamente come tali.
+```{r}
+str(data)
+is.factor(data$f1) 
+
+```
+
+La variabile f1 non risulta factor, procediamo dunque alla sua trasformazione e controlliamone i livelli:
+
+```{r}
+data$f1 <- as.factor(data$f1)
+table(data$f1) # oppure levels(data$f1)
+```
+
+
+La variabile nY, che nei nostri modelli sarà la variabile risposta, risulta essere di tipo *quantitativo*: procediamo quindi con una **regressione**.
+
+
+# Modellazione dataset ridotto
+Consideriamo innanzitutto un dataset ridotto contenente soltanto le esplicative di nostro interesse: nY, n1, n2 e f1.
+
+```{r}
+Data <- data[, c("nY","n1","n2", "f1")]
+```
+
+## Distribuzione variabile risposta
+Iniziamo l'analisi esplorativa del dataset osservando la distribuzione della variabile risposta nY:
+```{r}
+	hist(Data$nY, 
+	     main="Istogramma della distribuzione di nY",
+	     xlab = "ny",
+	     prob=TRUE
+	     ) # se le barre sono troppo larghe inserire breaks=n
+```
+
+Da questo grafico si può osservare come la distribuzione non sia per niente regolare e molto asimmetrica, infatti si discosta molto da una distribuzione normale.
+
+(Se invece è tutto normale:  
+Da questo grafico si può osservare come la coda di destra sia più pesante della coda di destra/sinistra. Tuttavia la distribuzione ottenuta non discosta di molto da una distribuzione normale, almeno non così tanto da giustificare una trasformazione per far si che essa risulti più simmetrica.)  
+
+
+Per renderla più simmetrica possiamo pensare ad attuarre una trasformazione logaritmica. Controlliamo il grafico in caso di trasformata logaritmica:
+```{r}
+	hist(log(Data$nY), 
+	     main="Istogramma della distribuzione di log(nY)",
+	     xlab = "log(ny)",
+	     prob=TRUE
+	     )
+```
+
+L’istogramma così ottenuto risulta più regolare e possiamo salvare la modifica nel dataset.
+```{r}
+	nY <- log(Data$nY)
+```
+
+Controlliamo ora il boxplot della variabile risposta:
+```{r}
+	boxplot(Data$nY, main="Boxplot della distribuzione di log(nY)")
+```
+
+La linea interna, che rappresenta la mediana dei valori, […]  
+L’intervallo interquartilico (distanza tra primo e terzo quartile) non è/non p molto elevato, il che indica che il 50% delle osservazioni è/non è concentrato intorno alla mediana.  
+Notiamo che la distanza tra il primo quartile e la mediana risulta minore/maggiore rispetto a quella tra il terzo quartile e la mediana: ciò indica una distribuzione asimmetrica, il che conferma quanto notato con l’istogramma.  
+Il baffo inferiore, che individua l'intervallo in cui sono posizionati i valori del quartile 1, non risulta troppo distanei dalla mediana.  
+Vi sono due valori anomani che discostano molto dalla mediana delle osservazioni.
+
+## Relazioni tra nY e una potenziale esplicativa QUANTITATIVA:
+Osserviamo i grafici di dispersione per identificare eventuali relazioni tra le variabili quantitative e la variabile di risposta. 
+```{r}
+  pairs(Data[, c("nY","n1", "n2")]) 
+```
+Da questo grafico possiamo notare una possibile relazione lineare tra la variabile di risposta nY e la variabile quantitativa n2.
+```{r}
+  cor(Data$n2, data$nY)
+```
+Notiamo anche la loro correlazione è molto elevata, il che può rafforzare l'ipotesi.
+
+Anche tra nY e n1 sembra esserci una relazione.
+
+(Altre cose: n3 sembra non essere correlata perché al variare di nY n3 non cambia)
+
+## Relazione tra Y e una potenziale esplicativa QUALITATIVA:
+```{r}
+  boxplot(Data$nY~Data$f1)
+```
+
+Le mediane dei 3 boxplot si discostano abbastanza tra di loro. La distribuzione delle osservazioni nei tre livelli della variabile qualitativa sembra indicare una possibile relazione con la variabile risposta.
+
+# Relazioni tra esplicativa quantitativa e qualitativa:
+```{r}
+plot(Data$n1,
+     Data$nY,
+     col=Data$f1,
+     pch=19,
+     main="Dispersione n1 in base al livello di f2"
+     )
+legend('topleft', pch=19, col=Data$f1, legend=levels(Data$f1))
+
+```
+
+In queste tipologie di plot dovrei notare dei pattern diversi tra i veri livelli della variabile qualitativa.  
+Si può osservare che per valori molto bassi di 1 spesso corrisponde un livello 2 della variabile qualitativa.
+
+# Scelta del modello
+Stimiamo ora un primo modello lineare semplice.
+Anche se dall’analisi esplorativa del dataset sono state fatte delle prime ipotesi sulla possibile forma possibile del modello adatto, è meglio iniziare stimando un modello più completo possibile per esempio tutte le coovariate e le interazione tra le qualitative e quantitative, per poi raffinarlo tenendo conto delle ipotesi precedentemente fatte.
+```{r}
+m <- lm(nY~n1*f1 + n2*f1, data = Data)
+summary(m)
+```
+Guardiamo i p-value di tutte le covariate per vedere se sono significative (se è basso).  
+Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia.  
+# se ci sono termini non significativi e non sono inclusi in nessuna interazione, dire che per il momento li vuoi mantenere per provare a modellarli più avanti con polinomi e spline
+# se tutti i termini sono significativi dillo e sii contento :)
+
+
