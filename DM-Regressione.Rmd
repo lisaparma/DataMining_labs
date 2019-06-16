@@ -18,8 +18,8 @@ dim(data)
 n <- nrow(data)
 ```
 
-Il dataset **data** ci fornisce informazioni in merito a […].  
-L’obiettivo è quello di stimare un modello in modo da prevedere [...]
+Il dataset **data**, che contiene *tot* osservazioni, ci fornisce informazioni in merito a […]
+L’obiettivo è quello di stimare un modello in modo da prevedere [...].
 
 # Analisi preliminare dei dati
 Procediamo con un’analisi esplorativa del dataset così da aiutarci a comprendere meglio la funzione che ogni variabile potrà assumere nei modelli che stimeremo.
@@ -29,12 +29,12 @@ Per prima cosa controlliamo se ci sono dei dati mancanti nel dataset:
 ```{r}
 sum(is.na(data))
 ```
-in questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli.
+In questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli attraverso il comando:
 ```{r}
 data <- na.omit(data)
 ```
 
-Controlliamo la natura delle variabili qualitative f1, f2  e f3 in quanto vogliamo essere sicuri che R le riconosca effettivamente come tali.
+Controlliamo la natura delle variabili qualitative f1, f2  e f3 in quanto vogliamo essere sicuri che R le riconosca effettivamente come tali:
 ```{r}
 str(data)
 is.factor(data$f1) 
@@ -55,15 +55,6 @@ La variabile nY, che nei nostri modelli sarà la variabile risposta, risulta ess
 
 
 
-
-
-
-
-
-
-
-
-
 # 1. Modellazione dataset ridotto
 Consideriamo innanzitutto un dataset ridotto contenente soltanto le esplicative di nostro interesse: nY, n1, n2 e f1.
 
@@ -74,39 +65,44 @@ Data <- data[, c("nY","n1","n2", "f1")]
 ## Distribuzione variabile risposta
 Iniziamo l'analisi esplorativa del dataset osservando la distribuzione della variabile risposta nY:
 ```{r fig.show = 'hide'}
+  par( mfrow=c(1,2) )
 	hist(Data$nY, 
-	     main="Istogramma della distribuzione di nY",
-	     xlab = "ny",
+	     main="Istogramma di nY",
+	     xlab="nY",
 	     prob=TRUE) # se le barre sono troppo larghe inserire breaks=n
+	
+	boxplot(Data$nY,  main="Boxplot di nY")
 ```
 
-(Se fosse normale e non ci fosse bisogno di una trasformazione;
-  Da questo grafico si può osservare come la coda di destra sia più pesante della coda di destra/sinistra. Tuttavia la distribuzione ottenuta non discosta di molto   da una distribuzione normale, almeno non così tanto da giustificare una trasformazione per far si che essa risulti più simmetrica.)  
-Da questo grafico si può osservare come la distribuzione non sia per niente regolare e molto asimmetrica, infatti si discosta molto da una distribuzione normale.  
-Per renderla più simmetrica possiamo pensare ad attuarre una trasformazione logaritmica.  
-Controlliamo il grafico in caso di trasformata logaritmica:
-```{r fig.show = 'hide'}
-	hist(log(Data$nY), 
-	     main="Istogramma della distribuzione di log(nY)",
-	     xlab = "log(ny)",
-	     prob=TRUE)
-```
-
-L’istogramma così ottenuto risulta più regolare e possiamo salvare la modifica nel dataset.
-```{r}
-	nY <- log(Data$nY)
-```
-
-Controlliamo ora il boxplot della variabile risposta:
-```{r fig.show = 'hide'}
-	boxplot(Data$nY, main="Boxplot della distribuzione di log(nY)")
-```
-
-La linea interna, che rappresenta la mediana dei valori, […]  
+-  L'istogramma presenta una coda di destra sia più pesante della coda di destra/sinistra. Tuttavia la distribuzione ottenuta non discosta di molto   da una distribuzione normale, almeno non così tanto da giustificare una trasformazione per far si che essa risulti più simmetrica.  
+Il boxplot ci conferma quando notato nell'istogrammma:  
+la linea interna, che rappresenta la mediana dei valori, […]  
 L’intervallo interquartilico (distanza tra primo e terzo quartile) non è/non p molto elevato, il che indica che il 50% delle osservazioni è/non è concentrato intorno alla mediana.  
 Notiamo che la distanza tra il primo quartile e la mediana risulta minore/maggiore rispetto a quella tra il terzo quartile e la mediana: ciò indica una distribuzione asimmetrica, il che conferma quanto notato con l’istogramma.  
 Il baffo inferiore, che individua l'intervallo in cui sono posizionati i valori del quartile 1, non risulta troppo distanei dalla mediana.  
 Vi sono due valori anomani che discostano molto dalla mediana delle osservazioni.
+
+- Dall'istogramma si può osservare come la distribuzione non sia per niente regolare e molto asimmetrica, infatti si discosta molto da una distribuzione normale.  
+Per renderla più simmetrica possiamo pensare ad attuarre una trasformazione logaritmica.  
+Il boxplot appare abbastanza regolare, [...guarda su...].
+
+Controlliamo i grafici in caso di trasformata logaritmica:
+```{r fig.show = 'hide'}
+    par( mfrow=c(1,2) )
+  	hist(log(Data$nY), 
+  	     main="Istogramma di log(nY)",
+  	     xlab = "log(ny)",
+  	     prob=TRUE)
+  	
+  	boxplot(Data$nY, main="Boxplot di log(nY)")
+```
+
+Entrambi i grafici così ottenuti risultano più regolari e possiamo salvare la modifica nel dataset (sia in quello ridotto in cui stiamo lavorando ora, che in quello esteso in modo che nella seconda parte del report si utilizzi questa modifica).
+```{r}
+  Data$nY <- log(Data$nY)
+  data$nY <- log(data$nY)
+```
+
 
 
 ## Relazioni tra nY e le variabili quantitative
@@ -117,41 +113,46 @@ Osserviamo i grafici di dispersione per identificare eventuali relazioni tra le 
 
 Da questo grafico possiamo notare una possibile relazione lineare tra la variabile di risposta nY e la variabile quantitativa n2.
 ```{r}
-  cor(Data$n2, data$nY)
+  cor(Data$n2, Data$nY)
 ```
 Notiamo anche la loro correlazione è molto elevata, il che può rafforzare l'ipotesi.
 
-Anche tra nY e n1 sembra esserci una relazione.
+Anche tra nY e n1 sembra esserci una relazione ma non di tipo lineare.
 
 (Altre cose: n3 sembra non essere correlata perché al variare di nY n3 non cambia)
 
-## Relazione tra Y e f1 (x ogni variabile qualitativa)
+
+
+## Relazione tra nY e f1 (x ogni variabile qualitativa)
 Osseviamo la distribuzione di nY condizionata dal valore di f1:
 ```{r fig.show = 'hide'}
-  boxplot(Data$nY~Data$f1)
+  boxplot(Data$nY~Data$f1, 
+          main="nY vs f1")
 ```
 
-Le mediane dei 3 boxplot si discostano abbastanza tra di loro. La distribuzione delle osservazioni nei tre livelli della variabile qualitativa sembra indicare una possibile relazione con la variabile risposta.
+Le mediane dei 3 boxplot si discostano abbastanza tra di loro.  Il baffo superiore/inferiore di f1.1 è più lungo di.. La distribuzione delle osservazioni nei tre livelli della variabile qualitativa sembra indicare una possibile relazione con la variabile risposta.
+
+
+
 
 ## Relazioni tra esplicativa quantitativa e qualitativa: 
+Vediamo ora se vi sono interazioni, tra la covariata qualitativa n1 e le covariate quantitative, che possano essere utili al fine di predirre nY. (x ogni qualitativa)
 ```{r fig.show = 'hide'}
 plot(Data$n1,
      Data$nY,
+     xlab="n1",
+     ylab="nY",
      col=Data$f1,
      pch=19,
-     main="Dispersione n1 in base al livello di f2")
+     main="Dispersione n1 in base a f1")
+
 legend('topleft', pch=19, col=Data$f1, legend=levels(Data$f1))
 ```
 
 In queste tipologie di plot dovrei notare dei pattern diversi tra i veri livelli della variabile qualitativa.  
-(Si può osservare che per valori molto bassi di 1 spesso corrisponde un livello 2 della variabile qualitativa in che indica una possibile interazione tra n1 ed f1..)
-
-
-
-
-
-
-
+(Si può osservare che per valori molto bassi di 1 spesso corrisponde un livello 2 della variabile qualitativa in che indica una possibile interazione tra n1 ed f1..)   
+Sembra che vi sia un interazione utile tra n1 ed f1, infatti si può notare come in generale...  
+[... spiegare a parole il significato...].
 
 
 
@@ -170,10 +171,13 @@ summary(m)
 ```
 I p-value descritti nel summary indicano che le coovariante *blablabla* non sono significative (il p-value è > 0.05).  
 Nessuna interazione inserita sembra significativa in quanto presentano un p-value alto.  
-- Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia.  
+- Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia.(Il termine n2 è l’unico con un alto p-value, tuttavia non posso eliminarlo dal modello per il principio di gerarchia, in quanto l’interazione in cui è contenuta tale variabile appare invece significativa.)
 - Se ci sono termini non significativi e non sono inclusi in nessuna interazione, dire che per il momento li vuoi mantenere per provare a modellarli più avanti con polinomi e spline.
 - Se tutti i termini sono significativi ottimo  
-L'R^2 del modello non risulta parcicolarmente alto e indica una buona possibilità di poter migliorare il modello.
+L'AdjR2 del modello (*tot*) non risulta particolarmente alto e indica una buona possibilità di poter migliorare il modello.
+
+[..descriverlo un po' a parole, es: Già da questo primo modello si può osservare come nY sia maggiormente legato n1. Si può notare che, se f1=1, presenta in generale un *boh* di *tot* in meno rispetto ad *boh*.
+Le altre covariate appaiono meno influenti, tuttavia si può osservare, anche se dai grafici visti prima non sembrava, come le *boh* siano inversamente proporzionali rispetto a nY.]
 
 
 (Se due variabili hanno valori di correlazione molto alti dati da cor() ma includendo la correlazione nel modello questa sembra non aggiungere benefici ci troviamo di fronte al fenomeno di multicollinearità. Una soluzione è quella di mantenere solo una delle due variabili nel modello)
@@ -196,13 +200,13 @@ Inseriamo il termine polinomiale alla variabile n2 che, dal grafico di dispersio
 
 ## Confronto modello 1 e modello X
 ```{r results=FALSE}
-   summary(m2)
+summary(m2)
 ```
 Rispetto al modello 1 i p-value indicano una maggior significatività, l'R^2 è peggiorato di *tot* ( quindi spiega peggio la variabilità dei dati) ma è ovvio che il un modello più complesso sia più alto. 
 RSE è più basso (meglio).  
 
-
-```{r}
+Eseguo il test-F:
+```{r results=FALSE}
 anova(m, m2)
 ```
 
@@ -222,6 +226,20 @@ plot(m2)
 2.	Il Q-Q plot pone i quantili osservati contro i quantili teorici, buono quando i punti sono vicini alla bisettrice, è normale che un po’ si distanzino verso le code ma non deve essere una cosa esagerata.  
 Il Q-Q plot mostra che i primi quantili osservati si distanziano in maniera significativa dai quantili teorici, i quantili centrali sembrano ok in quanto vicini alla bisettrice.
 4.	Il quarto grafico mostra i punti leva (osservazioni che influiscono maggiormente per la stima della retta di regressione), indicandoli con il loro indice all’interno del dataset, l’importante è che questi punti leva non vadano oltre la distanza di Cook, altrimenti significa che sono anomalie troppo significative.
+Se ci fosse un punto anomalo sarebbe bene andare ad osservarlo:
+```{r fig.show = 'hide'}
+par( mfrow=c(1,2) )
+plot( Data$nY, Data$n1, main="ny vs n1")
+points( Data[11, "nY"], Data[11, "n1"], col="red")
+plot( Data$nY, Data$n2, main="ny vs n2")
+points( Data[11, "nY"], Data[11, "n2"], col="red")
+```
+Il punto in questione non sembra avere n1 anomalo rispetto alle altre osservazioni, n2 invece sembra un po' superiore rispetto alla norma. Per ora non ci sono motivi per eliminare l'osservazioni nel dataset.  
+Se invece preferissi toglierlo:
+```{r}
+Data <- Data[-11,]
+```
+
 
 - I residui nel complesso appaiono abbastanza buoni ma possiamo comunque cercare di migliorare ulteriormente il modello.
 - I residui indicano che il modello stimato non si adatta bene ai dati, proviamo a migliorarlo.
@@ -244,6 +262,7 @@ Inseriamola nella variabile n2 che sembrerebbe non avere un comportamento linear
 Per la variabile quantitativa scelta si va a cercare il grado della spline da inserire, in un certo intervallo, calcolando l’AIC su modelli univariati.
 ```{r results = FALSE}
 library(splines)
+
 K <- 1:20
 accept.aic <- rep(0.0 , length(K))
 
@@ -265,8 +284,8 @@ summary(m4)
 Miglioriamo il modello inserendo spline di lisciamento per la variabile n2 che non sembra avere relazione lineare con la variabile risposta.
 ```{r results = FALSE}
 library(splines)
-sp <- smooth.spline(x=Data$n2, y=Data$nY, cv=TRUE)
 library(gam)
+sp <- smooth.spline(x=Data$n2, y=Data$nY, cv=TRUE)
 m5 <- gam(nY~ s(n2, sp$df) + n2*f1, data = Data)
 summary(m5)
 
@@ -276,37 +295,73 @@ Il coefficiente associato alla spline inserita per n2 non appare significativo, 
 Pr(F) alto (sopra 0.05) quindi non è significativo.
 
 
+### Confrontiamo m4 e m5 (lm e gam):
+#### Predizioni
+```{r fig.show = 'hide'}
+par( mfrow=c(1,2) )
+plot( Data$nY, fitted(m4) )
+abline( 0, 1, col="red", lw=2)
+plot( Data$nY, fitted(m5) )
+abline( 0, 1, col="red", lw=2)
+```
+
+Nel modello m4 i punti sembrano essere più vicini alla bisettrice rispetto che per il modello m5, questo indica una maggiore accuratezza nelle predizioni.
+
+#### Residual sum of square
+```{r}
+rss.m4 <- sum( (fitted(m4) - Data$nY)^2 )
+rss.m5 <- sum( (fitted(m5) - Data$nY)^2 )
+```
+
+L’rss del m5 è inferiore rispetto all’rss del modello m4.
 
 
 
+Sicuramente dunque il modello con le spline risulta più accurato nelle predizioni rispetto al modello m4, tuttavia per il problema trattato reputo importante avere un modello il più interpretabile possibile così da poter capire quali sono i fattori che *blablabla* e poter dunque agire di conseguenza.  
+Per questo motivo e dato che non percepisco tra i due modelli una differenza di performance eccessivamente rilevate, preferisco
+per questo tipo di problema il modello m4.   
+
+(Per questo primo punto sarebbe stato interessante, avendo più tempo a disposizione, provare a includere nel modello anche spline naturali.)
 
 
 
 
 # 2. Dataset esteso
-Proviamo a stimare un modello lineare che includa tutte le possibili variabili.
+Consideriamo ora tutte le variabili del dataset. Essendo che il numero delle osservazion(tot) è maggiore del numero delle variabili(tot) proviamo a stimare un modello lineare che includa tutte le possibili variabili.
 ```{r results = FALSE}
 m <- lm(nY ~ .,  data=data)
 summary(m)
 
 ```
 
-Osservandone il sommario notiamo che essendoci molte esplicative diventa difficile da leggere e comprendere. Quindi procedere come prima, valutando vari modelli e confrontandoli tra di loro, risulterebbe impossibile. 
+Osservandone il sommario notiamo che essendoci molte esplicative diventa difficile da leggere e comprendere. Quindi procedere come prima, valutando vari modelli e confrontandoli tra di loro in maniera manuale, risulterebbe impossibile. 
 Trattiamo così il problema utilizzando un modello di regressione penalizzata.
 
-## - Modello di regressione ridge
-```{r, results = FALSE, fig.show = 'hide'}
+Salviamoci le strutture dati necessarie per stimare un modello con ridge e con lasso. In particolare utilizziamo model.matrix per le covariate: in questo modo le variabili qualitative verranno trasformate in dummy variables.
+```{r}
 library(glmnet)
 y = data$nY
 X = model.matrix(m)[, -1]
+```
+
+
+## - Modello di regressione ridge
+```{r, results = FALSE, fig.show = 'hide'}
 m.ridge <- glmnet(x=X, y=y, alpha=0)
 plot(m.ridge, xvar='lambda')
+```
+Il grafico mostra come i coefficienti delle covariate vengano schiacciati verso lo 0 a man mno che lambda ( il parametro di penalizzazione) cresce ma il numero di variabili include nel modello rimane sempre lo stesso.
 
+Poi utilizzo la k-fold cross validation (che di default utilizzato un valore k=10) per scegliere il valore di penalizzazione migliore.
+```{r, results = FALSE, fig.show = 'hide'}
 set.seed(123)
 cv_ridge <- cv.glmnet(X, y, alpha=0)
-
 plot(cv_ridge)
+```
 
+In questo grafico vediamo i valori di MSE ottenuti al variare di lambda.
+Stimiamo un modello con il minor lambda:
+```{r, results = FALSE, fig.show = 'hide'}
 best_lambda <- cv_ridge$lambda.min
 m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda)
 
@@ -314,16 +369,21 @@ m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda)
 
 
 ## - Modello di regressione lasso
+Proviamo ora a stimare un modello con lasso:
 ```{r fig.show = 'hide'}
 m.lasso <- glmnet(x=X, y=y, alpha=1)
 plot(m.lasso, xvar='lambda')
 
+```
+Rispetto a ridge, lasso schiaccia più velocemente i coefficienti verso lo 0 e effettua una selezione delle variabili.
+
+```{r, results = FALSE, fig.show = 'hide'}
 set.seed(123)
 cv_lasso <- cv.glmnet(X, y, alpha=1)
-
 plot(cv_lasso)
-best_lambda <- cv_lasso$lambda.min
 
+
+best_lambda <- cv_lasso$lambda.min
 m_lasso.best <- glmnet(X, y, alpha=1, lambda = best_lambda)
 
 ```
@@ -336,6 +396,8 @@ m_lasso.1se <- glmnet(X, y, alpha=1, lambda = oneSe_lambda)
 ```
 
 Il modello stimato con lambda.1se, sebbene sia leggermente peggiore di quello che si otterrebbe utilizzando il best lambda, possiede molte variabili in meno e risulta meglio comprensibile. Quindi preferisco procedere utilizzando questo modello.
+
+
 
 ## Confronto tra ridge e lasso
 
@@ -355,6 +417,18 @@ m_lasso.1se$dev.ratio
 Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
 
 
+### MSE
+```{r results = FALSE}
+min(cv_ridge$cvm)
+min(cv_lasso$cvm)
+
+```
+L’MSE ottenuto con la cross validation del ridge risulta superiore rispetto che l’MSE ottenuto con la cross validation del lasso.
+
+Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza totale (variabilità della y) rispetto al ridge.
+
+
+
 ### Previsioni
 ```{r fig.show = 'hide'}
 previsioni.ridge <- predict(m_ridge, newx=X)
@@ -368,11 +442,12 @@ abline(0,1)
 
 
 ```
-
+Dai grafici appaiono più accurate le predizioni del lasso.
 Il modello ridge sembra stimare meglio i dati.
 
 ### Conclusioni
 In questo tipo di problema dove è utile capire *qualcosa* ritengo che un modello più interpretabile come quello ottenuto dal lasso sia preferibile.
+
 
 
 
