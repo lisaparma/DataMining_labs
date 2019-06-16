@@ -173,13 +173,13 @@ previsioni.lasso <- predict(m_lasso, newx=X)
 
 # Utilizziamo la miss classification table per confrontare gli error rate
 
-nY <- c(333.382, 1110.949, 133, 744.532, 141.209, 229.449, 24.007, 33.883)
-n1 <- c(46.382, 456350.949, 1313, 12.532, 11444.209, 234.449, 424.007, 333.883)
-n2 <- c(0.382, 0.949, 1, 0.532, 11.209, 9.449, 4.007, 3.883)
-n3 <- c(58.64, -243.02, 1, 1.03, 0.41, 0.43, -0.72, 0.67)
-f1 <- c(FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE)
-f2 <- c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)
-f3 <- c(0, 1, 0, 1, 0, 1, 0, 1)
+nY <- movie$box
+n1 <- movie$budget
+n2 <- movie$cmngsoon
+n3 <- movie$fandango
+f1 <- movie$action
+f2 <- movie$mprating
+f3 <- movie$comedy
 data <- data.frame(nY, n1, n2, n3, f1, f2, f3)
 
 

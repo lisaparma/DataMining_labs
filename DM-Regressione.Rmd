@@ -11,8 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 Carichiamo ed analizziamo il dataset preso in esame:
-```{r echo=TRUE, results = FALSE}
-load("data.RData")
+```{r results = FALSE}
+load("dataReg.RData")
 summary(data)
 dim(data)
 n <- nrow(data)
@@ -73,7 +73,7 @@ Data <- data[, c("nY","n1","n2", "f1")]
 
 ## Distribuzione variabile risposta
 Iniziamo l'analisi esplorativa del dataset osservando la distribuzione della variabile risposta nY:
-```{r}
+```{r fig.show = 'hide'}
 	hist(Data$nY, 
 	     main="Istogramma della distribuzione di nY",
 	     xlab = "ny",
@@ -85,7 +85,7 @@ Iniziamo l'analisi esplorativa del dataset osservando la distribuzione della var
 Da questo grafico si può osservare come la distribuzione non sia per niente regolare e molto asimmetrica, infatti si discosta molto da una distribuzione normale.  
 Per renderla più simmetrica possiamo pensare ad attuarre una trasformazione logaritmica.  
 Controlliamo il grafico in caso di trasformata logaritmica:
-```{r}
+```{r fig.show = 'hide'}
 	hist(log(Data$nY), 
 	     main="Istogramma della distribuzione di log(nY)",
 	     xlab = "log(ny)",
@@ -98,7 +98,7 @@ L’istogramma così ottenuto risulta più regolare e possiamo salvare la modifi
 ```
 
 Controlliamo ora il boxplot della variabile risposta:
-```{r}
+```{r fig.show = 'hide'}
 	boxplot(Data$nY, main="Boxplot della distribuzione di log(nY)")
 ```
 
@@ -111,7 +111,7 @@ Vi sono due valori anomani che discostano molto dalla mediana delle osservazioni
 
 ## Relazioni tra nY e le variabili quantitative
 Osserviamo i grafici di dispersione per identificare eventuali relazioni tra le variabili quantitative e la variabile di risposta. 
-```{r}
+```{r fig.show = 'hide'}
   pairs(Data[, c("nY","n1", "n2")]) 
 ```
 
@@ -127,14 +127,14 @@ Anche tra nY e n1 sembra esserci una relazione.
 
 ## Relazione tra Y e f1 (x ogni variabile qualitativa)
 Osseviamo la distribuzione di nY condizionata dal valore di f1:
-```{r}
+```{r fig.show = 'hide'}
   boxplot(Data$nY~Data$f1)
 ```
 
 Le mediane dei 3 boxplot si discostano abbastanza tra di loro. La distribuzione delle osservazioni nei tre livelli della variabile qualitativa sembra indicare una possibile relazione con la variabile risposta.
 
 ## Relazioni tra esplicativa quantitativa e qualitativa: 
-```{r}
+```{r fig.show = 'hide'}
 plot(Data$n1,
      Data$nY,
      col=Data$f1,
@@ -214,7 +214,7 @@ Significa cercare di capire da cosa e in che quantità è influenzata la variabi
 Per esempio: Dal modello si evince che la produzione di carciofi è fortemente influenzata dalla temperatura in quanto il coefficiente associato ad essa è molto elevato, a differenza dell’umidità che invece, pur essendo significativa, ha un coefficiente associato molto basso.)
 
 Osserviamo i residui per vedere se comunque è un modello accettabile o posso migliorarlo.
-```{r}
+```{r fig.show = 'hide'}
 par(mfrow=c(2,2))
 plot(m2)
 ```
@@ -232,11 +232,11 @@ Il Q-Q plot mostra che i primi quantili osservati si distanziano in maniera sign
 
 
 
-# Spline
+## Spline
 Proviamo a stimare un modello semiparametrico avvalendoci delle spline così da rimuovere la linearità presente nei residui. 
 (Provare ad inserirle nelle esplicative che sembrano avere un comportamento non lineare)
 
-## - Natural spline (spline di regressione)
+### - Natural spline (spline di regressione)
 Proviamo dunque ad usare le natural spline cosi' da continuare a sottostare alla linearita'.
 Inseriamola nella variabile n2 che sembrerebbe non avere un comportamento lineare.
 
@@ -261,7 +261,7 @@ summary(m4)
 (Confronto con un modello lineare: guardo il summary e faccio l'anova)
 
 
-## - Smooth spline (spline di lisciamento)
+### - Smooth spline (spline di lisciamento)
 Miglioriamo il modello inserendo spline di lisciamento per la variabile n2 che non sembra avere relazione lineare con la variabile risposta.
 ```{r results = FALSE}
 library(splines)
@@ -295,10 +295,8 @@ Osservandone il sommario notiamo che essendoci molte esplicative diventa diffici
 Trattiamo così il problema utilizzando un modello di regressione penalizzata.
 
 ## - Modello di regressione ridge
-```{r results = FALSE}
+```{r, results = FALSE, fig.show = 'hide'}
 library(glmnet)
-```
-```{r}
 y = data$nY
 X = model.matrix(m)[, -1]
 m.ridge <- glmnet(x=X, y=y, alpha=0)
@@ -316,7 +314,7 @@ m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda)
 
 
 ## - Modello di regressione lasso
-```{r}
+```{r fig.show = 'hide'}
 m.lasso <- glmnet(x=X, y=y, alpha=1)
 plot(m.lasso, xvar='lambda')
 
@@ -356,17 +354,9 @@ m_lasso.1se$dev.ratio
 
 Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
 
-### MSE
-```{r}
-min(m_ridge$cvm)
-min(m_lasso.1se$cvm)
-
-```
-(meglio basso)
-
 
 ### Previsioni
-```{r}
+```{r fig.show = 'hide'}
 previsioni.ridge <- predict(m_ridge, newx=X)
 previsioni.lasso <- predict(m_lasso.1se, newx=X)
 

@@ -1,0 +1,314 @@
+---
+title: "Studio di un dataset - Classificazione"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Carichiamo ed analizziamo il dataset preso in esame:
+```{r results = FALSE}
+load("dataClas.RData")
+summary(data)
+dim(data)
+n <- nrow(data)
+```
+
+Il dataset **data** ci fornisce informazioni in merito a […].  
+L’obiettivo è quello di stimare un modello in modo da prevedere [...]
+
+# Analisi preliminare dei dati
+Procediamo con un’analisi esplorativa del dataset così da aiutarci a comprendere meglio la funzione che ogni variabile potrà assumere nei modelli che stimeremo.
+
+Per prima cosa controlliamo se ci sono dei dati mancanti nel dataset:
+
+```{r}
+sum(is.na(data))
+```
+in questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli.
+```{r}
+data <- na.omit(data)
+```
+
+
+Controlliamo la natura delle variabili qualitative in quanto vogliamo essere sicuri che R le riconosca effettivamente come tali.
+```{r results=FALSE}
+str(data)
+```
+
+La variabile risposta nY è rappresentata come un int ma non basta attuare una trasformazione a factor: sostituiamola con una nuova variabile in cui i valori ... sono assegnati ad 1 e i valori .... a 0.
+```{r}
+newVar <- rep(0, nrow(data))
+newVar[data$nY > 20000000] <- 1
+data$nY <- as.factor(newVar)
+```
+
+
+Inoltre anche la variabile f1 non risulta un factor. Procediamo dunque alla sua trasformazione e controlliamone i livelli:
+
+```{r}
+is.factor(data$f1) 
+data$f1 <- as.factor(data$f1)
+table(data$f1) # oppure levels(data$f1)
+```
+
+La variabile nY, che nei nostri modelli sarà la variabile risposta, risulta essere di tipo *qualitativa*: procediamo quindi con una **classificazione**.
+
+
+
+
+
+
+
+
+# 1. Modellazione dataset ridotto
+Consideriamo innanzitutto un dataset ridotto contenente soltanto le esplicative di nostro interesse: nY, n1, n2 e f1.
+
+```{r}
+Data <- data[, c("nY","n1","n2", "f1")]
+```
+
+## Distribuzione variabile risposta
+Iniziamo l'analisi esplorativa del dataset osservando la distribuzione della variabile risposta nY:
+```{r, results=FALSE, fig.show = 'hide'}
+	barplot(table(data$nY))
+  table(data$nY)
+```
+Da qusto grafico vediamo che i film 0 risultano essere tot in più dei film 1.
+
+
+## Relazioni tra nY e le variabili quantitative n1 e n2
+```{r fig.show = 'hide'}
+par(mfrow=c(1,2))
+boxplot(data$n1~ data$nY, xlab="nY", ylab="n1")
+boxplot(data$n2~ data$nY, xlab="nY", ylab="n2")
+```
+
+Nel primo boxplot notiamo che la mediana tra i due livelli di nY non si discosta di molto. Però livelli elevati di n1 sono raggiunti solamente dal livello 1 di nY(-> Per film con un budget superiore a 700000 mila dollari ci sono solamente film con alti guadagni (livello 1 di ny)).  
+La relazione tra nY e n2 invece sembra molto più significaziova in quanto i due boxplot sembrano discostarsi molto di più. La mediana del livello 1 di nY supera il terzo quartile del boxplot del livello 0. In entrambi i casi però ci sono degli outlier.
+
+## Relazione tra Y e f1 (x ogni variabile qualitativa)
+```{r fig.show = 'hide'}
+par(mfrow=c(1,1))
+mosaicplot(table(data$nY, data$f1))
+```
+
+Da questo tipo di grafico notiamo che il livello TRUE di f1 (sulla y) ha più probabilità di avere un livello 1 di nY.
+
+
+
+## Relazioni tra esplicativa quantitativa e qualitativa (x ogni coppia)
+```{r fig.show = 'hide'}
+boxplot(data$n1~data$nY*data$f1,
+        ylab="n1",
+        xlab="nY vs f1",
+        names=c("nY:0 f1:0", "nY:1 f1:0", "nY:0 f1:1", "nY:1 f1:1"))
+```
+
+Questo grafico mostra le differenze di distribuzione di [...].   
+Notiamo che mentre quando f1 risulta falsa la mediana dei boxplot è vicina sia nel caso che il livello di nY sia 0  1, quando il livello di f1 risulta true queste risultano molto distaccate. Questo potrebbe indicare una possibile relazione tra le due variabili n1 e f1.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Scelta del modello
+Stimiamo ora un primo modello lineare semplice.
+Anche se dall’analisi esplorativa del dataset sono state fatte delle prime ipotesi sulla possibile forma possibile del modello adatto, è meglio iniziare stimando un modello il più completo possibile, per esempio inserendo tutte le coovariate e le interazione tra le qualitative e quantitative, per poi raffinarlo tenendo conto delle ipotesi precedentemente fatte.
+
+```{r }
+m <- glm(nY~n1*f1 + n2*f1, data = Data, family=binomial)
+summary(m)
+```
+I p-value descritti nel summary indicano che le coovariante *blablabla* non sono significative (il p-value è > 0.05).  
+Nessuna interazione inserita sembra significativa in quanto presentano un p-value alto.  
+- Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia.  
+- Se ci sono termini non significativi e non sono inclusi in nessuna interazione, dire che per il momento li vuoi mantenere per provare a modellarli più avanti con polinomi e spline.
+- Se tutti i termini sono significativi ottimo  
+Residual Deviance maggiore dei gradi di libertà (fa schifo, qui appare alta ma facendo un test della devianza si osserva che il modello stimato è comunque una buona seplificazione rispetto al saturo) 
+
+
+## Confronto con altri modelli
+- Seguendo l’indicazione del p-value basso per l'interazione tra n1 e f1 proviamo a rimuoverla:
+```{r}
+    m2 <- glm(nY~n2*f1, data = Data, family=binomial)
+```
+- Dato che nel modello 1 la variabile n1 non sembrava particolarmente significativa proviamo a rimuoverla:
+```{r}
+    m3 <- glm(nY~ n2*f1, data = Data, family=binomial)
+```
+
+
+
+## Confronto modello 1 e modello X
+### Summary
+```{r results=FALSE}
+   summary(m2)
+```
+Rispetto al modello 1 i p-value indicano una maggior significatività,  l'AIC sia passato da a , quindi è migliorato.   
+Dal summary il termina f1 appare non significativo ma appare significativa la sua relazione, quindi per il principio di gerarchia non possiamo eliminarlo.
+
+
+### P-value
+```{r}
+1-pchisq(60.16, 56) # Residual deviance, df
+```
+
+Il p-value associato alla Residual deviance calcolato è maggiore di 0.05, il che indicache il modello è una buona semplificazione del modello saturato, quindi è accettabile.
+
+### Test delle devianze
+```{r}
+anova(m, m2, test="Chisq")
+```
+Vediamo che c'è un p-value alto(>0.05): possiamo dunque passare al modello più semplice m2.
+
+### Tabella delle predizioni (Missclassification table)
+```{r}
+est.probs <- predict(m2, type="response")
+preds <- rep(0, nrow(Data))
+preds[est.probs > 0.5] <- 1
+addmargins(table(preds, nY=Data$nY)) #17/62
+```
+
+Error rate = 17/62
+
+
+
+
+## Analisi discriminativa
+Ora che il modello non è più semplificabile proviamo a cambiare approccio utilizzando un'analisi discriminativa.  
+
+### - LDA
+Partiamo da un'analisi discriminativa lineare includendo l'interazione tra f1 e n2
+```{r}
+library(MASS)
+m.lda <- lda(nY~ n1 + n2*f1, data = data)
+m.lda
+plot(m.lda)
+```
+
+Gli istogrammi si sovrappongono molto, ciò significa che la funzione discriminante non riesce a differenziare bene i due gruppi.
+
+### - QDA
+Dato che il numero di osservazioni n è pari a 60 mentre il numero di variabili p è solo 4 possiamo provare ad eseguire un'analisi discriminante quadratica.
+```{r}
+m.qda <- qda(nY~ n1 + n2*f1, data = data)
+m.qda
+```
+
+
+
+
+
+
+
+
+
+# 2. Dataset esteso
+Proviamo a stimare un modello lineare che includa tutte le possibili variabili.
+```{r results = FALSE}
+m <- glm(nY ~ .,  data=data, family="binomial")
+
+```
+
+Osservandone il sommario notiamo che essendoci molte esplicative diventa difficile da leggere e comprendere. Quindi procedere come prima, valutando vari modelli e confrontandoli tra di loro, risulterebbe impossibile. 
+Trattiamo così il problema utilizzando un modello di regressione penalizzata.
+
+## - Modello di regressione ridge
+```{r, results = FALSE, fig.show = 'hide'}
+library(glmnet)
+y = data$nY
+X = model.matrix(m)[, -1]
+m.ridge <- glmnet(x=X, y=y, alpha=0, family="binomial")
+plot(m.ridge, xvar='lambda')
+
+set.seed(123)
+cv_ridge <- cv.glmnet(X, y, alpha=0, family="binomial")
+
+plot(cv_ridge)
+
+best_lambda <- cv_ridge$lambda.min
+m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda, family="binomial")
+
+```
+
+
+## - Modello di regressione lasso
+```{r fig.show = 'hide'}
+m.lasso <- glmnet(x=X, y=y, alpha=1, family="binomial")
+plot(m.lasso, xvar='lambda')
+
+set.seed(123)
+cv_lasso <- cv.glmnet(X, y, alpha=1, family="binomial")
+
+plot(cv_lasso)
+best_lambda <- cv_lasso$lambda.min
+
+m_lasso.best <- glmnet(X, y, alpha=1, lambda = best_lambda, family="binomial")
+
+```
+Dal grafico della cross validation notiamo che lambda.1se (il lambda che dista 1 standard error rispetto al miglior labda) ha meno variabili. 
+Proviamo a stimare un modello sia con il lambda migliore che con il lambda 1se.
+```{r}
+oneSe_lambda <- cv_lasso$lambda.1se
+m_lasso.1se <- glmnet(X, y, alpha=1, lambda = oneSe_lambda, family="binomial")
+
+```
+
+Il modello stimato con lambda.1se, sebbene sia leggermente peggiore di quello che si otterrebbe utilizzando il best lambda, possiede molte variabili in meno e risulta meglio comprensibile. Quindi preferisco procedere utilizzando questo modello.
+
+## Confronto tra ridge e lasso
+
+### Coefficienti
+```{r results = FALSE}
+cbind(coef(m), coef(m_ridge), coef(m_lasso.1se))
+```
+Il modello lasso presenta molte variabili in meno rispetto agli altri due modelli. Questo risulta una facilitazione nella sua comprensione.
+
+### Devianza spiegata
+```{r}
+m_ridge$dev.ratio
+m_lasso.1se$dev.ratio
+
+```
+
+Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
+
+### MSE
+```{r  warning=FALSE}
+min(m_ridge$cvm)
+min(m_lasso.1se$cvm)
+
+```
+(meglio basso)
+
+
+
+Il modello ridge sembra stimare meglio i dati.
+
+### Conclusioni
+In questo tipo di problema dove è utile capire *qualcosa* ritengo che un modello più interpretabile come quello ottenuto dal lasso sia preferibile.
+
+
+
+
+
