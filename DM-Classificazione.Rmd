@@ -29,7 +29,7 @@ Per prima cosa controlliamo se ci sono dei dati mancanti nel dataset:
 ```{r}
 sum(is.na(data))
 ```
-in questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli.
+In questo dataset non sono presenti valori mancanti, ma in caso ci fossero stati sarebbe stato opportuno eliminarli.
 ```{r}
 data <- na.omit(data)
 ```
@@ -135,53 +135,57 @@ Notiamo che mentre quando f1 risulta falsa la mediana dei boxplot è vicina sia 
 Stimiamo ora un primo modello lineare semplice.
 Anche se dall’analisi esplorativa del dataset sono state fatte delle prime ipotesi sulla possibile forma possibile del modello adatto, è meglio iniziare stimando un modello il più completo possibile, per esempio inserendo tutte le coovariate e le interazione tra le qualitative e quantitative, per poi raffinarlo tenendo conto delle ipotesi precedentemente fatte.
 
-```{r }
+```{r results = FALSE}
 m <- glm(nY~n1*f1 + n2*f1, data = Data, family=binomial)
 summary(m)
 ```
 I p-value descritti nel summary indicano che le coovariante *blablabla* non sono significative (il p-value è > 0.05).  
 Nessuna interazione inserita sembra significativa in quanto presentano un p-value alto.  
-- Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia.  
+- Se ci sono termini non significativi ma inclusi in qualche interazione significativa, allora dire che non si possono eliminare per il principio di gerarchia. (Il termine n2 è l’unico con un alto p-value, tuttavia non posso eliminarlo dal modello per il principio di gerarchia, in quanto l’interazione in cui è contenuta tale variabile appare invece significativa.)  
 - Se ci sono termini non significativi e non sono inclusi in nessuna interazione, dire che per il momento li vuoi mantenere per provare a modellarli più avanti con polinomi e spline.
 - Se tutti i termini sono significativi ottimo  
-Residual Deviance maggiore dei gradi di libertà (fa schifo, qui appare alta ma facendo un test della devianza si osserva che il modello stimato è comunque una buona seplificazione rispetto al saturo) 
+Residual Deviance maggiore dei gradi di libertà (fa schifo, qui appare alta ma facendo un test della devianza si osserva che il modello stimato è comunque una buona seplificazione rispetto al saturo)
+
+[..descriverlo un po' a parole, es: Già da questo primo modello si può osservare come nY sia maggiormente legato n1. Si può notare che, se f1=1, presenta in generale un *boh* di *tot* in meno rispetto ad *boh*.
+Le altre covariate appaiono meno influenti, tuttavia si può osservare, anche se dai grafici visti prima non sembrava, come le *boh* siano inversamente proporzionali rispetto a nY.]
 
 
 ## Confronto con altri modelli
 - Seguendo l’indicazione del p-value basso per l'interazione tra n1 e f1 proviamo a rimuoverla:
-```{r}
+```{r, results = FALSE, warning=FALSE}
     m2 <- glm(nY~n2*f1, data = Data, family=binomial)
 ```
 - Dato che nel modello 1 la variabile n1 non sembrava particolarmente significativa proviamo a rimuoverla:
-```{r}
+```{r, results=FALSE, warning=FALSE}
     m3 <- glm(nY~ n2*f1, data = Data, family=binomial)
 ```
 
 
 
 ## Confronto modello 1 e modello X
-### Summary
+### - Summary
 ```{r results=FALSE}
-   summary(m2)
+  summary(m2)
 ```
 Rispetto al modello 1 i p-value indicano una maggior significatività,  l'AIC sia passato da a , quindi è migliorato.   
 Dal summary il termina f1 appare non significativo ma appare significativa la sua relazione, quindi per il principio di gerarchia non possiamo eliminarlo.
 
 
-### P-value
+### - P-value
 ```{r}
 1-pchisq(60.16, 56) # Residual deviance, df
 ```
 
 Il p-value associato alla Residual deviance calcolato è maggiore di 0.05, il che indicache il modello è una buona semplificazione del modello saturato, quindi è accettabile.
 
-### Test delle devianze
-```{r}
+### - Test delle devianze
+```{r results=FALSE}
 anova(m, m2, test="Chisq")
 ```
 Vediamo che c'è un p-value alto(>0.05): possiamo dunque passare al modello più semplice m2.
 
-### Tabella delle predizioni (Missclassification table)
+### - Error rate
+Tabella delle predizioni (Missclassification table)
 ```{r}
 est.probs <- predict(m2, type="response")
 preds <- rep(0, nrow(Data))
@@ -192,14 +196,12 @@ addmargins(table(preds, nY=Data$nY)) #17/62
 Error rate = 17/62
 
 
-
-
 ## Analisi discriminativa
 Ora che il modello non è più semplificabile proviamo a cambiare approccio utilizzando un'analisi discriminativa.  
 
 ### - LDA
 Partiamo da un'analisi discriminativa lineare includendo l'interazione tra f1 e n2
-```{r}
+```{r, fig.show = 'hide', results=FALSE}
 library(MASS)
 m.lda <- lda(nY~ n1 + n2*f1, data = data)
 m.lda
@@ -210,11 +212,53 @@ Gli istogrammi si sovrappongono molto, ciò significa che la funzione discrimina
 
 ### - QDA
 Dato che il numero di osservazioni n è pari a 60 mentre il numero di variabili p è solo 4 possiamo provare ad eseguire un'analisi discriminante quadratica.
-```{r}
+```{r fig.show = 'hide', results=FALSE}
 m.qda <- qda(nY~ n1 + n2*f1, data = data)
 m.qda
 ```
 
+## Confronto un glm, LDA e QDA 
+Divido il dataset originale in un training set e in un test set, prendendo il 70% dei dati come traing set e il 30% come validation.
+```{r results=FALSE}
+set.seed(123)
+selection <- sample(n, 0.70*n, replace=FALSE)
+training.set <- data[selection,]
+test.set <- data[-selection,]
+```
+
+### Misclassification table
+Calcoliamo gli error rate sul test set per tutti e tre i modelli
+```{r results=FALSE}
+preds.lda <- predict(m.lda, test.set)
+preds.lda1 <- rep(0, nrow(test.set))
+preds.lda1[preds.lda$posterior[,2] > 0.5] <- 1
+addmargins(table(predictions=preds.lda1, nY=test.set$nY))
+```
+Error rate LDA: *tot*
+```{r results=FALSE}
+preds.qda <- predict(m.qda, test.set)
+preds.qda1 <- rep(0, nrow(test.set))
+preds.qda1[preds.qda$posterior[,2] > 0.5] <- 1
+addmargins(table(predictions=preds.qda1, nY=test.set$nY))
+```
+Error rate QDA: *tot*
+
+Utilizzando dunque l'analisi discriminativa si ottiene un error rate leggermente inferiore.
+Proviamo a sceglierne uno tra lda e qda guardando le loro ROC curve.
+
+### ROC curve
+```{r, results = FALSE, fig.show = 'hide', warning=FALSE}
+library(pROC)
+lda.roc <- roc(test.set$nY, preds.lda$posterior[,2])
+qda.roc <- roc(test.set$nY, preds.qda$posterior[,2])
+
+par(mfrow=c(1,2))
+plot(lda.roc, legacy.axes=TRUE, xlim=c(1.0, 0.0), print.auc=TRUE, auc.polygon=TRUE)
+plot(qda.roc, legacy.axes=TRUE, xlim=c(1.0, 0.0), print.auc=TRUE, auc.polygon=TRUE)
+```
+L'area sotto la curva risulta uguale per entrambi i modelli, sono entrambe abbastanza basse. Visto dunque l'error rate di ciascun modello e visto l'auc, la curva roc preferisco il modello lda in quanto più semplice e facilmente interpretabile rispetto ad qda.
+
+Si può concludere indicando secondo noi qual’è il modello, tra quelli stimati, più adatto per il nostro problema. Tenendo conto dei confronti fatti e delle misure ottenute, ma anche di cosa ci chiede il problema, se è un tipo di problema per cui è meglio avere un modello meno performante ma più interpretabile oppure se si ha bisogno della misura più accurata possibile senza che ci interessi più di tanto capire come viene calcolata. Cercare di discutere la scelta immedesimandoci come fossimo davvero dei ricercatori interessati al progetto.
 
 
 
@@ -224,28 +268,40 @@ m.qda
 
 
 # 2. Dataset esteso
-Proviamo a stimare un modello lineare che includa tutte le possibili variabili.
+Consideriamo ora tutte le variabili del dataset. Essendo che il numero delle osservazion(tot) è maggiore del numero delle variabili(tot) proviamo a stimare un modello lineare che includa tutte le possibili variabili.
 ```{r results = FALSE}
 m <- glm(nY ~ .,  data=data, family="binomial")
-
 ```
 
-Osservandone il sommario notiamo che essendoci molte esplicative diventa difficile da leggere e comprendere. Quindi procedere come prima, valutando vari modelli e confrontandoli tra di loro, risulterebbe impossibile. 
+Osservandone il sommario notiamo che essendoci molte esplicative diventa difficile da leggere e comprendere. Quindi procedere come prima, valutando vari modelli e confrontandoli tra di loro in maniera manuale, risulterebbe impossibile. 
 Trattiamo così il problema utilizzando un modello di regressione penalizzata.
 
-## - Modello di regressione ridge
-```{r, results = FALSE, fig.show = 'hide'}
+Salviamoci le strutture dati necessarie per stimare un modello con ridge e con lasso. In particolare utilizziamo model.matrix per le covariate: in questo modo le variabili qualitative verranno trasformate in dummy variables.
+```{r}
 library(glmnet)
 y = data$nY
 X = model.matrix(m)[, -1]
+```
+
+
+## - Modello di regressione ridge
+```{r, results = FALSE, fig.show = 'hide'}
 m.ridge <- glmnet(x=X, y=y, alpha=0, family="binomial")
 plot(m.ridge, xvar='lambda')
+```
 
+Il grafico mostra come i coefficienti delle covariate vengano schiacciati verso lo 0 a man mno che lambda ( il parametro di penalizzazione) cresce ma il numero di variabili include nel modello rimane sempre lo stesso.
+
+Poi utilizzo la k-fold cross validation (che di default utilizzato un valore k=10) per scegliere il valore di penalizzazione migliore.
+```{r, results = FALSE, fig.show = 'hide'}
 set.seed(123)
 cv_ridge <- cv.glmnet(X, y, alpha=0, family="binomial")
-
 plot(cv_ridge)
+```
 
+In questo grafico vediamo i valori di MSE ottenuti al variare di lambda.
+Stimiamo un modello con il minor lambda:
+```{r, results = FALSE, fig.show = 'hide'}
 best_lambda <- cv_ridge$lambda.min
 m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda, family="binomial")
 
@@ -256,13 +312,16 @@ m_ridge <- glmnet(X, y, alpha=0, lambda = best_lambda, family="binomial")
 ```{r fig.show = 'hide'}
 m.lasso <- glmnet(x=X, y=y, alpha=1, family="binomial")
 plot(m.lasso, xvar='lambda')
+```
 
+Rispetto a ridge, lasso schiaccia più velocemente i coefficienti verso lo 0 e effettua una selezione delle variabili.
+
+```{r, results = FALSE, fig.show = 'hide'}
 set.seed(123)
 cv_lasso <- cv.glmnet(X, y, alpha=1, family="binomial")
-
 plot(cv_lasso)
-best_lambda <- cv_lasso$lambda.min
 
+best_lambda <- cv_lasso$lambda.min
 m_lasso.best <- glmnet(X, y, alpha=1, lambda = best_lambda, family="binomial")
 
 ```
@@ -278,35 +337,33 @@ Il modello stimato con lambda.1se, sebbene sia leggermente peggiore di quello ch
 
 ## Confronto tra ridge e lasso
 
-### Coefficienti
+### - Coefficienti
 ```{r results = FALSE}
 cbind(coef(m), coef(m_ridge), coef(m_lasso.1se))
 ```
 Il modello lasso presenta molte variabili in meno rispetto agli altri due modelli. Questo risulta una facilitazione nella sua comprensione.
 
-### Devianza spiegata
+### - Devianza spiegata
 ```{r}
 m_ridge$dev.ratio
 m_lasso.1se$dev.ratio
-
 ```
 
 Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
 
-### MSE
-```{r  warning=FALSE}
-min(m_ridge$cvm)
-min(m_lasso.1se$cvm)
+### - MSE
+```{r results = FALSE}
+min(cv_ridge$cvm)
+min(cv_lasso$cvm)
 
 ```
-(meglio basso)
-
-
-
-Il modello ridge sembra stimare meglio i dati.
+L’MSE ottenuto con la cross validation del ridge risulta superiore rispetto che l’MSE ottenuto con la cross validation del lasso.
 
 ### Conclusioni
 In questo tipo di problema dove è utile capire *qualcosa* ritengo che un modello più interpretabile come quello ottenuto dal lasso sia preferibile.
+
+(Osserviamo, grazie ai coefficienti rimasti nel modello m.lasso.min, quali sono le covariate più significative per predirre la risposta. Diamo una interpretazione al problema e ai coefficienti stimati.   
+Se ci serve maggiore interpretabilità allora possiamo scegliere un modello tra m.lasso.min e m.lasso.1se, se invece ci interessano maggiormente le performace, senza necessitare di avere un modello interpretabile, potremmo buttarci sul modello ridge, sempre che in performance sia risultato migliore.)
 
 
 

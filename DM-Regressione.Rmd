@@ -18,7 +18,7 @@ dim(data)
 n <- nrow(data)
 ```
 
-Il dataset **data**, che contiene *tot* osservazioni, ci fornisce informazioni in merito a […]
+Il dataset **data**, che contiene *tot* osservazioni, ci fornisce informazioni in merito a […].  
 L’obiettivo è quello di stimare un modello in modo da prevedere [...].
 
 # Analisi preliminare dei dati
@@ -180,7 +180,7 @@ L'AdjR2 del modello (*tot*) non risulta particolarmente alto e indica una buona 
 Le altre covariate appaiono meno influenti, tuttavia si può osservare, anche se dai grafici visti prima non sembrava, come le *boh* siano inversamente proporzionali rispetto a nY.]
 
 
-(Se due variabili hanno valori di correlazione molto alti dati da cor() ma includendo la correlazione nel modello questa sembra non aggiungere benefici ci troviamo di fronte al fenomeno di multicollinearità. Una soluzione è quella di mantenere solo una delle due variabili nel modello)
+(Se due variabili hanno valori di correlazione molto alti dati da cor() ma se inseriti nel modello entrambi  non sembrano aggiungere benefici ci troviamo di fronte al fenomeno di multicollinearità. Una soluzione è quella di mantenere solo una delle due variabili nel modello)
 
 ## Confronto con altri modelli
 - Seguendo l’indicazione del p-value basso per l'interazione tra n1 e f1 proviamo a rimuoverla:
@@ -199,12 +199,14 @@ Inseriamo il termine polinomiale alla variabile n2 che, dal grafico di dispersio
 
 
 ## Confronto modello 1 e modello X
+### - Summary
 ```{r results=FALSE}
 summary(m2)
 ```
 Rispetto al modello 1 i p-value indicano una maggior significatività, l'R^2 è peggiorato di *tot* ( quindi spiega peggio la variabilità dei dati) ma è ovvio che il un modello più complesso sia più alto. 
 RSE è più basso (meglio).  
 
+### - Test F
 Eseguo il test-F:
 ```{r results=FALSE}
 anova(m, m2)
@@ -213,10 +215,7 @@ anova(m, m2)
 Il valore del p-value (minore di 0,05) ci conferma che è utile mantenere il modello più complesso.
 Se fosse alto sarebbe stato utile passare al modello più semplice.
 
-(A questo punto che abbiamo un primo modello “finale” possiamo cercare di interpretare i coefficienti, prima di andare a stimare modello più complicati.
-Significa cercare di capire da cosa e in che quantità è influenzata la variabile di risposta
-Per esempio: Dal modello si evince che la produzione di carciofi è fortemente influenzata dalla temperatura in quanto il coefficiente associato ad essa è molto elevato, a differenza dell’umidità che invece, pur essendo significativa, ha un coefficiente associato molto basso.)
-
+### - Residui
 Osserviamo i residui per vedere se comunque è un modello accettabile o posso migliorarlo.
 ```{r fig.show = 'hide'}
 par(mfrow=c(2,2))
@@ -245,8 +244,9 @@ Data <- Data[-11,]
 - I residui indicano che il modello stimato non si adatta bene ai dati, proviamo a migliorarlo.
      
 
-
-
+(A questo punto che abbiamo un primo modello “finale” possiamo cercare di interpretare i coefficienti, prima di andare a stimare modello più complicati.
+Significa cercare di capire da cosa e in che quantità è influenzata la variabile di risposta
+Per esempio: Dal modello si evince che la produzione di carciofi è fortemente influenzata dalla temperatura in quanto il coefficiente associato ad essa è molto elevato, a differenza dell’umidità che invece, pur essendo significativa, ha un coefficiente associato molto basso.)
 
 
 
@@ -264,15 +264,15 @@ Per la variabile quantitativa scelta si va a cercare il grado della spline da in
 library(splines)
 
 K <- 1:20
-accept.aic <- rep(0.0 , length(K))
+n2.aic <- rep(0.0 , length(K))
 
-for (i in 1:length(K)) {
-  ns.k <- lm( nY ~ ns (n2 , K[i]) , data=Data )
-  accept.aic [i] <- extractAIC(ns.k)[2]
+for (i in K) {
+  ns.k <- lm( nY ~ ns (n2 , i) , data=Data )
+  n2.aic [i] <- extractAIC(ns.k)[2]
 }
-id = which.min(accept.aic)
-accept.k.min <- K[id]
-m4 <- lm(nY~ ns(n2, accept.k.min) + n2*f1, data = Data)
+id = which.min(n2.aic)
+n2.k.min <- K[id]
+m4 <- lm(nY~ ns(n2, n2.k.min) + n2*f1, data = Data)
 summary(m4)
 
 ```
@@ -323,6 +323,8 @@ per questo tipo di problema il modello m4.
 
 (Per questo primo punto sarebbe stato interessante, avendo più tempo a disposizione, provare a includere nel modello anche spline naturali.)
 
+Si può concludere indicando secondo noi qual’è il modello, tra quelli stimati, più adatto per il nostro problema. Tenendo conto dei confronti fatti e delle misure ottenute, ma anche di cosa ci chiede il problema, se è un tipo di problema per cui è meglio avere un modello meno performante ma più interpretabile oppure se si ha bisogno della misura più accurata possibile senza che ci interessi più di tanto capire come viene calcolata. Cercare di discutere la scelta immedesimandoci come fossimo davvero dei ricercatori interessati al progetto.
+
 
 
 
@@ -350,7 +352,7 @@ X = model.matrix(m)[, -1]
 m.ridge <- glmnet(x=X, y=y, alpha=0)
 plot(m.ridge, xvar='lambda')
 ```
-Il grafico mostra come i coefficienti delle covariate vengano schiacciati verso lo 0 a man mno che lambda ( il parametro di penalizzazione) cresce ma il numero di variabili include nel modello rimane sempre lo stesso.
+Il grafico mostra come i coefficienti delle covariate vengano schiacciati verso lo 0 a man mano che lambda (il parametro di penalizzazione) cresce ma il numero di variabili include nel modello rimane sempre lo stesso.
 
 Poi utilizzo la k-fold cross validation (che di default utilizzato un valore k=10) per scegliere il valore di penalizzazione migliore.
 ```{r, results = FALSE, fig.show = 'hide'}
@@ -392,7 +394,6 @@ Proviamo a stimare un modello sia con il lambda migliore che con il lambda 1se.
 ```{r}
 oneSe_lambda <- cv_lasso$lambda.1se
 m_lasso.1se <- glmnet(X, y, alpha=1, lambda = oneSe_lambda)
-
 ```
 
 Il modello stimato con lambda.1se, sebbene sia leggermente peggiore di quello che si otterrebbe utilizzando il best lambda, possiede molte variabili in meno e risulta meglio comprensibile. Quindi preferisco procedere utilizzando questo modello.
@@ -401,27 +402,25 @@ Il modello stimato con lambda.1se, sebbene sia leggermente peggiore di quello ch
 
 ## Confronto tra ridge e lasso
 
-### Coefficienti
+### - Coefficienti
 ```{r results = FALSE}
 cbind(coef(m), coef(m_ridge), coef(m_lasso.1se))
 ```
 Il modello lasso presenta molte variabili in meno rispetto agli altri due modelli. Questo risulta una facilitazione nella sua comprensione.
 
-### Devianza spiegata
+### - Devianza spiegata
 ```{r results = FALSE}
 m_ridge$dev.ratio
 m_lasso.1se$dev.ratio
-
 ```
 
-Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
+Confrontando la devianza spiegata (ovvero la porzione di variabilità della risposta y che sono in grado di spiegare) di entrambi i modelli possiamo notare che il lasso spiega il *tot* in meno di devianza rispetto al ridge.
 
 
-### MSE
+### - MSE
 ```{r results = FALSE}
 min(cv_ridge$cvm)
 min(cv_lasso$cvm)
-
 ```
 L’MSE ottenuto con la cross validation del ridge risulta superiore rispetto che l’MSE ottenuto con la cross validation del lasso.
 
@@ -429,7 +428,7 @@ Confrontando la devianza spiegata di entrambi i modelli possiamo notare che il l
 
 
 
-### Previsioni
+### - Previsioni
 ```{r fig.show = 'hide'}
 previsioni.ridge <- predict(m_ridge, newx=X)
 previsioni.lasso <- predict(m_lasso.1se, newx=X)
@@ -448,6 +447,8 @@ Il modello ridge sembra stimare meglio i dati.
 ### Conclusioni
 In questo tipo di problema dove è utile capire *qualcosa* ritengo che un modello più interpretabile come quello ottenuto dal lasso sia preferibile.
 
+(Osserviamo, grazie ai coefficienti rimasti nel modello m.lasso.min, quali sono le covariate più significative per predirre la risposta. Diamo una interpretazione al problema e ai coefficienti stimati.   
+Se ci serve maggiore interpretabilità allora possiamo scegliere un modello tra m.lasso.min e m.lasso.1se, se invece ci interessano maggiormente le performace, senza necessitare di avere un modello interpretabile, potremmo buttarci sul modello ridge, sempre che in performance sia risultato migliore.)
 
 
 
